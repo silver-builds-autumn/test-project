@@ -9,8 +9,8 @@ import zipfile
 import os
 
 # 配置
-docx_path = r'D:\User\zhenjiangli\Desktop\codex\work-spaces\2026端午广州龙舟珠海三日图文攻略(1).docx'
-extract_dir = r'D:\User\zhenjiangli\Desktop\codex\work-spaces\dragon-boat-guide\images\from-docx'
+docx_path = r'./端午节攻略/2026端午广州龙舟珠海三日图文攻略(1).docx'
+extract_dir = r'./images/from-docx'
 
 def extract_images():
     if not os.path.exists(docx_path):
