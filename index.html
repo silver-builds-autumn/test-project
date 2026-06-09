@@ -1,232 +1,218 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026端午广州龙舟珠海三日图文攻略</title>
+    <meta name="description" content="2026 端午广州看龙舟 + 珠海三日地图攻略，含天地图底图、OpenLayers 交互、路线筛选、地点详情与手机导航唤起。">
+    <title>2026端午广州龙舟 + 珠海三日地图攻略</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://api.tianditu.gov.cn/api?v=4.0&tk=a2ca005a710864da5d797e35e0f45b3b"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"></script>
 </head>
+
 <body>
-    <!-- 顶部导航 -->
-    <nav class="top-nav" id="topNav">
-        <div class="nav-brand">
-            <span class="nav-icon">&#127754;</span>
-            <span class="nav-title">端午攻略</span>
-        </div>
-        <ul class="nav-links">
-            <li><a href="#cover" class="active">首页</a></li>
-            <li><a href="#overview">总览</a></li>
-            <li><a href="#day1">Day1</a></li>
-            <li><a href="#day2">Day2</a></li>
-            <li><a href="#day3">Day3</a></li>
-            <li><a href="#tips">贴士</a></li>
-        </ul>
+    <header class="site-header">
+        <a class="brand" href="#top" aria-label="返回顶部">
+            <span class="brand-mark">舟</span>
+            <span class="brand-text">端午地图攻略</span>
+        </a>
+        <nav class="desktop-nav" aria-label="主导航">
+            <a href="#route-map">地图</a>
+            <a href="#itinerary">行程</a>
+            <a href="#food-stay">吃住</a>
+            <a href="#transit">交通</a>
+            <a href="#budget">预算</a>
+            <a href="#checklist">清单</a>
+        </nav>
+    </header>
+
+    <main id="top">
+        <section class="hero-section">
+            <div class="hero-copy">
+                <p class="eyebrow">2026 · 6月19日 - 6月21日</p>
+                <h1>广州看龙舟，傍晚进珠海，两晚三日少折返路线</h1>
+                <p class="hero-desc">基于原始 Word 与 PPT 攻略重构：第一天锁定广州二沙涌/寺右/杨箕一带看龙舟，傍晚优先广州东到珠海站；珠海两晚住吉大/城市阳台附近，第三天晚饭前返广州。
+                </p>
+                <div class="hero-actions">
+                    <a class="primary-action" href="#route-map">打开地图</a>
+                    <a class="secondary-action" href="#checklist">查看出发清单</a>
+                </div>
+            </div>
+            <div class="hero-panel" aria-label="核心策略">
+                <div class="strategy-card accent-red">
+                    <span>主看点</span>
+                    <strong>二沙涌 / 寺右 / 杨箕</strong>
+                    <p>9:30 前到岸边，10:00-12:30 主看传统龙船景。</p>
+                </div>
+                <div class="strategy-card accent-blue">
+                    <span>转场</span>
+                    <strong>广州东优先 → 珠海站</strong>
+                    <p>无合适车次再用广州南兜底，不优先珠海北。</p>
+                </div>
+                <div class="strategy-card accent-green">
+                    <span>住宿</span>
+                    <strong>吉大 / 城市阳台</strong>
+                    <p>靠海岸线景点，回珠海站也稳。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="insight-strip" aria-label="行程关键数字">
+            <article><strong>3天</strong><span>广州 + 珠海</span></article>
+            <article><strong>2晚</strong><span>住珠海核心海岸线</span></article>
+            <article><strong>16:30-17:30</strong><span>第三天返程推荐窗口</span></article>
+            <article><strong>430-730元</strong><span>不含住宿人均预算</span></article>
+        </section>
+
+        <section id="route-map" class="section route-map-section">
+            <div class="section-heading align-left">
+                <p class="eyebrow">Tianditu + OpenLayers</p>
+                <h2>可筛选路线地图</h2>
+                <p>默认展示全程点位和三天路线；可切换矢量、影像、地形底图，点击地图标记或右侧卡片查看详情并在手机端唤起导航 App。</p>
+            </div>
+
+            <div class="map-shell">
+                <div class="map-toolbar" aria-label="地图筛选">
+                    <label>
+                        <span>底图</span>
+                        <select id="baseLayerSelect">
+                            <option value="vector">天地图矢量</option>
+                            <option value="image">天地图影像</option>
+                            <option value="terrain">天地图地形</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>日期</span>
+                        <select id="dayFilter">
+                            <option value="all">全部行程</option>
+                            <option value="1">Day 1 广州龙舟 + 转珠海</option>
+                            <option value="2">Day 2 珠海海岸线</option>
+                            <option value="3">Day 3 轻量返程</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>类型</span>
+                        <select id="categoryFilter">
+                            <option value="all">全部地点</option>
+                            <option value="dragon">龙舟观赛</option>
+                            <option value="sight">景点</option>
+                            <option value="food">餐饮</option>
+                            <option value="station">交通</option>
+                            <option value="stay">住宿区域</option>
+                            <option value="backup">备选</option>
+                        </select>
+                    </label>
+                    <button id="fitMapBtn" class="ghost-button" type="button">重置视角</button>
+                </div>
+
+                <div class="map-layout">
+                    <div class="map-canvas-wrap">
+                        <div id="guide-map" class="guide-map" role="application" aria-label="端午路线地图"></div>
+                        <div id="map-popup" class="map-popup" aria-live="polite">
+                            <button id="popupClose" class="popup-close" type="button" aria-label="关闭弹窗">×</button>
+                            <div id="popupContent"></div>
+                        </div>
+                    </div>
+                    <aside class="place-panel" aria-label="地点列表">
+                        <div class="panel-title">
+                            <strong>地点详情</strong>
+                            <span id="placeCount">0 个地点</span>
+                        </div>
+                        <div id="placeList" class="place-list"></div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <section id="itinerary" class="section">
+            <div class="section-heading">
+                <p class="eyebrow">Route Plan</p>
+                <h2>三天执行动线</h2>
+                <p>以“第一天广州看龙舟、傍晚进珠海、第三天下午返广州”为核心，不把行程排满，给端午人流、天气和车站进站留缓冲。</p>
+            </div>
+            <div id="dayTimeline" class="day-timeline"></div>
+        </section>
+
+        <section id="food-stay" class="section split-section">
+            <div>
+                <div class="section-heading align-left compact">
+                    <p class="eyebrow">Food</p>
+                    <h2>餐饮与补给</h2>
+                    <p>按“到珠海后不跑远、第二天边逛边吃、第三天控时间”的口径整理，补充人均消费、推荐场景和交通提示。</p>
+                </div>
+                <div id="foodList" class="info-card-list"></div>
+            </div>
+            <div>
+                <div class="section-heading align-left compact">
+                    <p class="eyebrow">Stay</p>
+                    <h2>住宿范围</h2>
+                    <p>不指定唯一酒店，优先给出实际订房搜索范围，兼顾海岸线游玩和第三天返程。</p>
+                </div>
+                <div id="stayList" class="info-card-list"></div>
+            </div>
+        </section>
+
+        <section id="transit" class="section transit-section">
+            <div class="section-heading align-left compact">
+                <p class="eyebrow">Transit Keywords</p>
+                <h2>公交、地铁与地图搜索口径</h2>
+                <p>从原攻略的高德搜索关键词扩展为可维护的交通卡片：出发前可直接复制关键词到地图 App，现场则按封路、限流和实时路线调整。</p>
+            </div>
+            <div id="transitGrid" class="transit-grid"></div>
+        </section>
+
+        <section id="budget" class="section budget-section">
+            <div class="section-heading align-left compact">
+                <p class="eyebrow">Budget</p>
+                <h2>预算与备选策略</h2>
+            </div>
+            <div id="budgetGrid" class="budget-grid"></div>
+            <div id="backupStrategy" class="backup-box"></div>
+        </section>
+
+        <section id="checklist" class="section checklist-section">
+            <div class="section-heading">
+                <p class="eyebrow">Before Departure</p>
+                <h2>出发前确认清单</h2>
+                <p>先保车票和住宿，再等龙舟公告微调观赛点；实际封路、入口和演出时间以当天公告与导航为准。</p>
+            </div>
+            <div id="checklistGrid" class="checklist-grid"></div>
+        </section>
+    </main>
+
+    <nav class="mobile-nav" aria-label="移动端导航">
+        <a href="#route-map">地图</a>
+        <a href="#itinerary">行程</a>
+        <a href="#food-stay">吃住</a>
+        <a href="#transit">交通</a>
+        <a href="#checklist">清单</a>
     </nav>
 
-    <!-- 封面 -->
-    <section id="cover" class="cover">
-        <div class="cover-bg"></div>
-        <div class="cover-overlay"></div>
-        <div class="cover-content">
-            <div class="cover-badge">2026 · 端午节</div>
-            <h1 class="cover-title">广州龙舟珠海<br>三日图文攻略</h1>
-            <p class="cover-subtitle">龙舟竞渡 · 西关古韵 · 海滨假日</p>
-            <div class="cover-date">6月10日 — 6月12日</div>
-            <div class="cover-tags">
-                <span class="tag" style="--tag-color:#c0392b">龙舟赛</span>
-                <span class="tag" style="--tag-color:#2980b9">西关风情</span>
-                <span class="tag" style="--tag-color:#27ae60">海滨风光</span>
-            </div>
-            <a href="#overview" class="cover-scroll">
-                <span>开始探索</span>
-                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-            </a>
+    <div id="navigationSheet" class="sheet" aria-hidden="true">
+        <div class="sheet-mask" data-close-sheet></div>
+        <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+            <button class="sheet-close" type="button" data-close-sheet aria-label="关闭导航选择">×</button>
+            <p class="eyebrow">Mobile Navigation</p>
+            <h3 id="sheetTitle">选择导航 App</h3>
+            <p id="sheetTarget" class="sheet-target"></p>
+            <p id="locationStatus" class="location-status">正在准备导航参数……</p>
+            <div id="navOptions" class="nav-options"></div>
+            <p class="sheet-note">若未安装对应 App，浏览器可能无响应。页面会提供 Web 导航兜底链接；微信内置浏览器可能需要点击右上角在系统浏览器打开。</p>
         </div>
-    </section>
+    </div>
 
-    <!-- 总览 -->
-    <section id="overview" class="section overview">
-        <div class="section-header">
-            <span class="section-number">00</span>
-            <h2 class="section-title">行程总览</h2>
-            <p class="section-desc">三日精彩，一图尽览</p>
-        </div>
-        <div class="overview-layout">
-            <div class="overview-timeline">
-                <div class="timeline-item" data-day="1">
-                    <div class="timeline-dot" style="--dot-color:#c0392b"></div>
-                    <div class="timeline-card">
-                        <div class="timeline-day">Day 1</div>
-                        <div class="timeline-title">广州 · 龙舟竞渡</div>
-                        <div class="timeline-route">猎德村 → 琶洲 → 广州塔 → 珠江夜游</div>
-                    </div>
-                </div>
-                <div class="timeline-item" data-day="2">
-                    <div class="timeline-dot" style="--dot-color:#2980b9"></div>
-                    <div class="timeline-card">
-                        <div class="timeline-day">Day 2</div>
-                        <div class="timeline-title">广州 · 西关古韵</div>
-                        <div class="timeline-route">荔枝湾 → 永庆坊 → 沙面岛 → 北京路</div>
-                    </div>
-                </div>
-                <div class="timeline-item" data-day="3">
-                    <div class="timeline-dot" style="--dot-color:#27ae60"></div>
-                    <div class="timeline-card">
-                        <div class="timeline-day">Day 3</div>
-                        <div class="timeline-title">珠海 · 海滨假日</div>
-                        <div class="timeline-route">圆明新园 → 情侣路 → 渔女 → 长隆</div>
-                    </div>
-                </div>
-            </div>
-            <div class="overview-map-wrap">
-                <div id="map-overview" class="map-container"></div>
-                <div class="map-legend">
-                    <span class="legend-item"><i class="legend-dot" style="background:#c0392b"></i>Day1</span>
-                    <span class="legend-item"><i class="legend-dot" style="background:#2980b9"></i>Day2</span>
-                    <span class="legend-item"><i class="legend-dot" style="background:#27ae60"></i>Day3</span>
-                </div>
-            </div>
-        </div>
-    </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <!-- Day 1 -->
-    <section id="day1" class="section day-section" data-theme="#c0392b">
-        <div class="section-header">
-            <span class="section-number">01</span>
-            <h2 class="section-title">广州 · 龙舟竞渡</h2>
-            <p class="section-desc">端午正日，百舸争流，感受千年龙舟文化的澎湃激情</p>
-        </div>
-        <div class="day-layout">
-            <div class="day-content">
-                <div class="spot-list" id="day1-spots"></div>
-                <div class="day-food-hotel">
-                    <div class="food-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg> 美食推荐</h3>
-                        <div class="food-list" id="day1-food"></div>
-                    </div>
-                    <div class="hotel-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg> 住宿推荐</h3>
-                        <div class="hotel-card" id="day1-hotel"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="day-map-wrap">
-                <div id="map-day1" class="map-container day-map"></div>
-                <div class="map-controls">
-                    <button class="map-btn" onclick="resetMap(1)">重置视角</button>
-                    <button class="map-btn" onclick="toggleRoute(1)">切换路线</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Day 2 -->
-    <section id="day2" class="section day-section" data-theme="#2980b9">
-        <div class="section-header">
-            <span class="section-number">02</span>
-            <h2 class="section-title">广州 · 西关古韵</h2>
-            <p class="section-desc">漫步荔枝湾涌，探访骑楼老街，感受最地道的广府风情</p>
-        </div>
-        <div class="day-layout">
-            <div class="day-content">
-                <div class="spot-list" id="day2-spots"></div>
-                <div class="day-food-hotel">
-                    <div class="food-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg> 美食推荐</h3>
-                        <div class="food-list" id="day2-food"></div>
-                    </div>
-                    <div class="hotel-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg> 住宿推荐</h3>
-                        <div class="hotel-card" id="day2-hotel"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="day-map-wrap">
-                <div id="map-day2" class="map-container day-map"></div>
-                <div class="map-controls">
-                    <button class="map-btn" onclick="resetMap(2)">重置视角</button>
-                    <button class="map-btn" onclick="toggleRoute(2)">切换路线</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Day 3 -->
-    <section id="day3" class="section day-section" data-theme="#27ae60">
-        <div class="section-header">
-            <span class="section-number">03</span>
-            <h2 class="section-title">珠海 · 海滨假日</h2>
-            <p class="section-desc">浪漫之城，情侣路上椰风海韵，长隆王国欢乐无限</p>
-        </div>
-        <div class="day-layout">
-            <div class="day-content">
-                <div class="spot-list" id="day3-spots"></div>
-                <div class="day-food-hotel">
-                    <div class="food-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg> 美食推荐</h3>
-                        <div class="food-list" id="day3-food"></div>
-                    </div>
-                    <div class="hotel-section">
-                        <h3><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg> 住宿推荐</h3>
-                        <div class="hotel-card" id="day3-hotel"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="day-map-wrap">
-                <div id="map-day3" class="map-container day-map"></div>
-                <div class="map-controls">
-                    <button class="map-btn" onclick="resetMap(3)">重置视角</button>
-                    <button class="map-btn" onclick="toggleRoute(3)">切换路线</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 出行贴士 -->
-    <section id="tips" class="section tips-section">
-        <div class="section-header">
-            <span class="section-number">Tip</span>
-            <h2 class="section-title">出行贴士</h2>
-            <p class="section-desc">细节决定旅行体验，提前准备更从容</p>
-        </div>
-        <div class="tips-grid" id="tips-grid"></div>
-    </section>
-
-    <!-- 底部 -->
     <footer class="site-footer">
-        <p>2026 端午广州龙舟珠海三日图文攻略</p>
-        <p>地图服务由天地图提供</p>
+        <p>2026 端午广州看龙舟 + 珠海三日地图攻略</p>
+        <p>地图底图：天地图；地图引擎：OpenLayers；路线与消费为出行规划口径，实际以官方公告、12306 与导航实时结果为准。</p>
     </footer>
-
-    <!-- 移动端底部导航 -->
-    <div class="mobile-nav" id="mobileNav">
-        <a href="#cover" class="mobile-nav-item active">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span>首页</span>
-        </a>
-        <a href="#overview" class="mobile-nav-item">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            <span>总览</span>
-        </a>
-        <a href="#day1" class="mobile-nav-item">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-            <span>行程</span>
-        </a>
-        <a href="#tips" class="mobile-nav-item">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-            <span>贴士</span>
-        </a>
-    </div>
-
-    <!-- 图片灯箱 -->
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-        <img src="" alt="" id="lightbox-img">
-        <span class="lightbox-close">&times;</span>
-    </div>
 
     <script src="js/data.js"></script>
     <script src="js/map.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

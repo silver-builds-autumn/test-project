@@ -1,276 +1,291 @@
-/**
- * 页面交互与渲染模块
- * 负责DOM渲染、滚动监听、图片懒加载、灯箱等功能
- */
+const GuideApp = (() => {
+  let activeNavigationPlace = null;
+  let currentPosition = null;
 
-let placeholderDataUri = '';
-let mapsInitialized = false;
+  const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const el = id => document.getElementById(id);
+  const safe = value => String(value || '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 
-/* ============================================
-   初始化
-   ============================================ */
-document.addEventListener('DOMContentLoaded', () => {
-    placeholderDataUri = createPlaceholder();
-    renderAll();
-    initScrollSpy();
-    initLazyLoad();
-    initLightbox();
-    initTimelineClick();
+  const toast = message => {
+    const node = el('toast');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.add('show');
+    window.clearTimeout(toast.timer);
+    toast.timer = window.setTimeout(() => node.classList.remove('show'), 2600);
+  };
 
-    // 等待天地图 API 加载完成后初始化地图
-    waitForTianditu(() => {
-        if (!mapsInitialized) {
-            MapApp.initAll();
-            mapsInitialized = true;
-        }
+  const categoryLabel = category => (GuideMap.categoryMeta[category] || { label: '地点' }).label;
+
+  const renderDayTimeline = () => {
+    const node = el('dayTimeline');
+    if (!node) return;
+    node.innerHTML = GUIDE_DATA.days.map(day => `
+      <article class="day-card" style="--day-color:${day.color}">
+        <div class="day-card-head">
+          <span>${day.date}</span>
+          <h3>${day.title}</h3>
+          <p>${day.summary}</p>
+        </div>
+        <div class="schedule-list">
+          ${day.schedule.map(item => `
+            <div class="schedule-item">
+              <time>${item.time}</time>
+              <div><strong>${item.title}</strong><p>${item.detail}</p></div>
+            </div>
+          `).join('')}
+        </div>
+      </article>
+    `).join('');
+  };
+
+  const renderPlaceList = places => {
+    const node = el('placeList');
+    const count = el('placeCount');
+    if (!node) return;
+    count.textContent = `${places.length} 个地点`;
+    node.innerHTML = places.map(place => `
+      <article class="place-card" data-place-id="${place.id}">
+        <div class="place-image" style="background-image:url('${place.image || ''}')"></div>
+        <div class="place-content">
+          <div class="place-meta">
+            <span>${categoryLabel(place.category)}</span>
+            <span>Day ${place.day}</span>
+          </div>
+          <h3>${place.name}</h3>
+          <p>${place.short}</p>
+          <div class="place-facts">
+            <span>${place.time || '按当天安排'}</span>
+            <span>${place.cost || '按实际消费'}</span>
+            ${place.dwell ? `<span>${place.dwell}</span>` : ''}
+          </div>
+          <div class="place-extra">
+            ${place.search ? `<p><strong>搜索</strong>${place.search}</p>` : ''}
+            ${place.risk ? `<p><strong>提示</strong>${place.risk}</p>` : ''}
+          </div>
+          <div class="place-actions">
+            <button type="button" data-focus-place="${place.id}">查看</button>
+            <button type="button" data-nav-place="${place.id}">导航</button>
+          </div>
+        </div>
+      </article>
+    `).join('');
+
+    node.querySelectorAll('[data-focus-place]').forEach(button => {
+      button.addEventListener('click', () => {
+        const place = GUIDE_DATA.places.find(item => item.id === button.dataset.focusPlace);
+        if (place) GuideMap.showPopup(place);
+      });
     });
-});
 
-/* ============================================
-   占位图生成
-   ============================================ */
-function createPlaceholder() {
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">' +
-        '<rect width="400" height="300" fill="#f0f0f0"/>' +
-        '<text x="50%" y="50%" text-anchor="middle" fill="#bbb" font-size="14">图片加载中</text>' +
-        '</svg>';
-    try {
-        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
-    } catch (e) {
-        return '';
+    node.querySelectorAll('[data-nav-place]').forEach(button => {
+      button.addEventListener('click', () => {
+        const place = GUIDE_DATA.places.find(item => item.id === button.dataset.navPlace);
+        if (place) openNavigation(place);
+      });
+    });
+  };
+
+  const renderFood = () => {
+    const node = el('foodList');
+    if (!node) return;
+    node.innerHTML = GUIDE_DATA.food.map(item => `
+      <article class="info-card">
+        <span>${item.scene}</span>
+        <h3>${item.name}</h3>
+        <p>${item.recommendation}</p>
+        <dl><div><dt>人均</dt><dd>${item.cost}</dd></div><div><dt>交通</dt><dd>${item.transport}</dd></div></dl>
+      </article>
+    `).join('');
+  };
+
+  const renderStays = () => {
+    const node = el('stayList');
+    if (!node) return;
+    node.innerHTML = GUIDE_DATA.stays.map(item => `
+      <article class="info-card stay-card">
+        <span>住宿搜索词</span>
+        <h3>${item.name}</h3>
+        <p>${item.reason}</p>
+        <dl><div><dt>预算</dt><dd>${item.price}</dd></div><div><dt>搜索</dt><dd>${item.search}</dd></div></dl>
+      </article>
+    `).join('');
+  };
+
+  const renderTransit = () => {
+    const node = el('transitGrid');
+    if (!node || !GUIDE_DATA.transit) return;
+    node.innerHTML = GUIDE_DATA.transit.map(item => `
+      <article class="transit-card">
+        <span>${item.title}</span>
+        <strong>${item.primary}</strong>
+        <p>${item.detail}</p>
+      </article>
+    `).join('');
+  };
+
+  const renderBudget = () => {
+    const node = el('budgetGrid');
+    const backupNode = el('backupStrategy');
+    if (node) {
+      node.innerHTML = GUIDE_DATA.budget.map(item => `
+        <article class="budget-card">
+          <span>${item.item}</span>
+          <strong>${item.estimate}</strong>
+          <p>${item.note}</p>
+        </article>
+      `).join('');
     }
-}
+    if (backupNode) {
+      backupNode.innerHTML = `<h3>${GUIDE_DATA.backup.title}</h3><ul>${GUIDE_DATA.backup.items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+    }
+  };
 
-/* ============================================
-   渲染全部内容
-   ============================================ */
-function renderAll() {
-    itinerary.days.forEach(day => {
-        renderSpots(day);
-        renderFood(day);
-        renderHotel(day);
+  const renderChecklist = () => {
+    const node = el('checklistGrid');
+    if (!node) return;
+    node.innerHTML = GUIDE_DATA.checklist.map((item, index) => `
+      <article class="check-card">
+        <span>${String(index + 1).padStart(2, '0')}</span>
+        <h3>${item.title}</h3>
+        <p>${item.detail}</p>
+      </article>
+    `).join('');
+  };
+
+  const navLinks = place => {
+    const name = encodeURIComponent(place.name);
+    const destination = `${place.lat},${place.lng}`;
+    const current = currentPosition ? `${currentPosition.lat},${currentPosition.lng}` : '';
+    const iosAmap = `iosamap://path?sourceApplication=dragonBoatGuide&sid=当前位置&slat=${currentPosition?.lat || ''}&slon=${currentPosition?.lng || ''}&sname=当前位置&did=${place.id}&dlat=${place.lat}&dlon=${place.lng}&dname=${name}&dev=0&t=0`;
+    const androidAmap = `androidamap://route?sourceApplication=dragonBoatGuide&slat=${currentPosition?.lat || ''}&slon=${currentPosition?.lng || ''}&sname=当前位置&dlat=${place.lat}&dlon=${place.lng}&dname=${name}&dev=0&t=0`;
+    return [
+      {
+        name: '高德地图',
+        scheme: /iPhone|iPad|iPod/i.test(navigator.userAgent) ? iosAmap : androidAmap,
+        web: `https://uri.amap.com/navigation?to=${place.lng},${place.lat},${name}&mode=car&policy=1&src=dragonBoatGuide&coordinate=gaode&callnative=1`
+      },
+      {
+        name: '百度地图',
+        scheme: `baidumap://map/direction?origin=${current || '我的位置'}&destination=${destination}&mode=driving&coord_type=wgs84&src=webapp.dragonBoatGuide`,
+        web: `https://api.map.baidu.com/direction?origin=${current || '我的位置'}&destination=${destination}&mode=driving&region=中国&output=html&src=dragonBoatGuide`
+      },
+      {
+        name: '腾讯地图',
+        scheme: `qqmap://map/routeplan?type=drive&from=当前位置&fromcoord=${current}&to=${name}&tocoord=${destination}&policy=0`,
+        web: `https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${name}&tocoord=${destination}&referer=dragonBoatGuide`
+      }
+    ];
+  };
+
+  const renderNavOptions = place => {
+    const node = el('navOptions');
+    if (!node) return;
+    node.innerHTML = navLinks(place).map(option => `
+      <button type="button" class="nav-option" data-scheme="${safe(option.scheme)}" data-web="${safe(option.web)}">
+        <strong>${option.name}</strong>
+        <span>优先唤起 App，失败后可用 Web 兜底</span>
+      </button>
+    `).join('');
+    node.querySelectorAll('.nav-option').forEach(button => {
+      button.addEventListener('click', () => launchNavigation(button.dataset.scheme, button.dataset.web));
     });
-    renderTips();
-}
+  };
 
-/* ============================================
-   渲染景点卡片
-   ============================================ */
-function renderSpots(day) {
-    const container = document.getElementById('day' + day.day + '-spots');
-    if (!container) return;
+  const launchNavigation = (scheme, webUrl) => {
+    if (!isMobile()) {
+      window.open(webUrl, '_blank', 'noopener');
+      toast('电脑端已打开 Web 导航页面。');
+      return;
+    }
 
-    container.innerHTML = day.spots.map(spot => {
-        const hasMultiple = spot.images.length > 1;
-        const imagesHtml = spot.images.map((img, i) =>
-            '<img src="' + img + '" alt="' + spot.name + '" ' +
-            'class="' + (i === 0 ? 'active' : '') + '" ' +
-            'loading="lazy" ' +
-            'onerror="this.src=\'' + placeholderDataUri + '\'" ' +
-            'onclick="openLightbox(\'' + img + '\')">'
-        ).join('');
+    const start = Date.now();
+    window.location.href = scheme;
+    window.setTimeout(() => {
+      if (Date.now() - start < 1800) {
+        toast('若未跳转，可能未安装该 App，可点击 Web 兜底链接。');
+        window.open(webUrl, '_blank', 'noopener');
+      }
+    }, 1300);
+  };
 
-        const dotsHtml = hasMultiple ?
-            '<div class="spot-image-dots">' +
-            spot.images.map((_, i) =>
-                '<span class="image-dot ' + (i === 0 ? 'active' : '') + '" ' +
-                'onclick="event.stopPropagation();switchImage(this,' + i + ')"></span>'
-            ).join('') +
-            '</div>' : '';
+  const openNavigation = place => {
+    activeNavigationPlace = place;
+    el('sheetTarget').textContent = `${place.name}｜${place.short}`;
+    el('navigationSheet').classList.add('active');
+    el('navigationSheet').setAttribute('aria-hidden', 'false');
 
-        const typeLabel = spot.type === 'activity' ? '活动' : '景点';
-        const tipsHtml = spot.tips ? '<div class="spot-tips">💡 ' + spot.tips + '</div>' : '';
+    if (!isMobile()) {
+      el('locationStatus').textContent = '当前为电脑端访问，将提供 Web 导航兜底链接。';
+      currentPosition = null;
+      renderNavOptions(place);
+      return;
+    }
 
-        return '<div class="spot-card">' +
-            '<div class="spot-images">' + imagesHtml + dotsHtml + '</div>' +
-            '<div class="spot-info">' +
-            '<div class="spot-meta">' +
-            '<span class="spot-type ' + spot.type + '">' + typeLabel + '</span>' +
-            '<span class="spot-time">⏱ ' + spot.time + '</span>' +
-            '</div>' +
-            '<div class="spot-name">' + spot.name + '</div>' +
-            '<div class="spot-desc">' + spot.desc + '</div>' +
-            tipsHtml +
-            '</div></div>';
-    }).join('');
-}
+    if (!navigator.geolocation) {
+      el('locationStatus').textContent = '当前浏览器不支持定位，将使用“我的位置”作为起点。';
+      currentPosition = null;
+      renderNavOptions(place);
+      return;
+    }
 
-/* ============================================
-   渲染美食
-   ============================================ */
-function renderFood(day) {
-    const container = document.getElementById('day' + day.day + '-food');
-    if (!container) return;
+    el('locationStatus').textContent = '正在获取当前位置，用于自动填入导航起点……';
+    navigator.geolocation.getCurrentPosition(position => {
+      currentPosition = { lat: position.coords.latitude, lng: position.coords.longitude };
+      el('locationStatus').textContent = '已获取当前位置，可选择导航 App。';
+      renderNavOptions(place);
+    }, () => {
+      currentPosition = null;
+      el('locationStatus').textContent = '定位失败或被拒绝，将使用“我的位置”作为起点。';
+      renderNavOptions(place);
+    }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 });
+  };
 
-    container.innerHTML = day.restaurants.map(r => {
-        const img = r.images && r.images[0] ? r.images[0] : placeholderDataUri;
-        return '<div class="food-card">' +
-            '<img src="' + img + '" alt="' + r.name + '" loading="lazy" onerror="this.src=\'' + placeholderDataUri + '\'">' +
-            '<div class="food-info">' +
-            '<div class="food-name">' + r.name + '</div>' +
-            '<div class="food-time">' + r.time + '</div>' +
-            '<div class="food-desc">' + r.desc + '</div>' +
-            '</div></div>';
-    }).join('');
-}
+  const closeNavigation = () => {
+    activeNavigationPlace = null;
+    el('navigationSheet').classList.remove('active');
+    el('navigationSheet').setAttribute('aria-hidden', 'true');
+  };
 
-/* ============================================
-   渲染住宿
-   ============================================ */
-function renderHotel(day) {
-    const container = document.getElementById('day' + day.day + '-hotel');
-    if (!container || !day.hotel) return;
+  const bindSheet = () => {
+    document.querySelectorAll('[data-close-sheet]').forEach(node => node.addEventListener('click', closeNavigation));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeNavigation();
+    });
+  };
 
-    const h = day.hotel;
-    const img = h.images && h.images[0] ? h.images[0] : placeholderDataUri;
-
-    container.innerHTML = '<div class="hotel-card-inner">' +
-        '<img src="' + img + '" alt="' + h.name + '" loading="lazy" onerror="this.src=\'' + placeholderDataUri + '\'">' +
-        '<div class="hotel-info">' +
-        '<div class="hotel-name">' + h.name + '</div>' +
-        '<div class="hotel-price">' + h.price + '</div>' +
-        '<div class="hotel-desc">' + h.desc + '</div>' +
-        '</div></div>';
-}
-
-/* ============================================
-   渲染贴士
-   ============================================ */
-function renderTips() {
-    const container = document.getElementById('tips-grid');
-    if (!container) return;
-
-    const icons = ['🌞', '🚇', '🚄', '🎢', '🏨'];
-    container.innerHTML = itinerary.tips.map((tip, i) =>
-        '<div class="tip-card">' +
-        '<span class="tip-icon">' + icons[i % icons.length] + '</span>' +
-        '<div class="tip-text">' + tip + '</div>' +
-        '</div>'
-    ).join('');
-}
-
-/* ============================================
-   图片轮播
-   ============================================ */
-function switchImage(dot, index) {
-    const container = dot.closest('.spot-images');
-    if (!container) return;
-    const images = container.querySelectorAll('img');
-    const dots = container.querySelectorAll('.image-dot');
-
-    images.forEach((img, i) => img.classList.toggle('active', i === index));
-    dots.forEach((d, i) => d.classList.toggle('active', i === index));
-}
-
-/* ============================================
-   灯箱
-   ============================================ */
-function openLightbox(src) {
-    const box = document.getElementById('lightbox');
-    const img = document.getElementById('lightbox-img');
-    if (!box || !img) return;
-    img.src = src;
-    box.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeLightbox() {
-    const box = document.getElementById('lightbox');
-    if (!box) return;
-    box.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-/* ============================================
-   懒加载
-   ============================================ */
-function initLazyLoad() {
+  const bindHeader = () => {
+    const links = document.querySelectorAll('.desktop-nav a, .mobile-nav a');
+    const sections = [...links].map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
     if (!('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach(section => observer.observe(section));
+  };
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                if (img.dataset.src) {
-                    img.src = img.dataset.src;
-                    img.removeAttribute('data-src');
-                }
-                observer.unobserve(img);
-            }
-        });
-    }, { rootMargin: '50px' });
+  const init = () => {
+    renderDayTimeline();
+    renderFood();
+    renderStays();
+    renderTransit();
+    renderBudget();
+    renderChecklist();
+    bindSheet();
+    bindHeader();
+    GuideMap.init();
+    renderPlaceList(GuideMap.filteredPlaces());
+  };
 
-    document.querySelectorAll('img[data-src]').forEach(img => observer.observe(img));
-}
+  return {
+    init,
+    renderPlaceList,
+    openNavigation
+  };
+})();
 
-/* ============================================
-   滚动监听 + 导航高亮
-   ============================================ */
-function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id]');
-    const navLinks = document.querySelectorAll('.nav-links a');
-    const mobileLinks = document.querySelectorAll('.mobile-nav-item');
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const id = entry.target.getAttribute('id');
-
-                navLinks.forEach(link => {
-                    link.classList.toggle('active', link.getAttribute('href') === '#' + id);
-                });
-
-                mobileLinks.forEach(link => {
-                    const href = link.getAttribute('href');
-                    const isDaySection = id === 'day1' || id === 'day2' || id === 'day3';
-                    link.classList.toggle('active',
-                        href === '#' + id || (href === '#day1' && isDaySection)
-                    );
-                });
-            }
-        });
-    }, { rootMargin: '-40% 0px -55% 0px' });
-
-    sections.forEach(s => observer.observe(s));
-}
-
-/* ============================================
-   时间轴点击跳转
-   ============================================ */
-function initTimelineClick() {
-    document.querySelectorAll('.timeline-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const day = card.closest('.timeline-item').dataset.day;
-            const target = document.getElementById('day' + day);
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth' });
-            }
-        });
-    });
-}
-
-/* ============================================
-   等待天地图 API
-   ============================================ */
-function waitForTianditu(callback, maxRetries) {
-    maxRetries = maxRetries || 60;
-    let retries = 0;
-    function check() {
-        if (typeof T !== 'undefined' && T.Map) {
-            callback();
-        } else if (retries < maxRetries) {
-            retries++;
-            setTimeout(check, 200);
-        } else {
-            console.warn('天地图 API 加载超时，请检查网络连接');
-        }
-    }
-    check();
-}
-
-/* ============================================
-   键盘事件
-   ============================================ */
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeLightbox();
-});
+window.GuideApp = GuideApp;
+document.addEventListener('DOMContentLoaded', GuideApp.init);
