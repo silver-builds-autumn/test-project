@@ -46,16 +46,23 @@ const GuideMap = (() => {
 
   const asLonLat = place => [place.lng, place.lat];
   const toWebMercator = lonLat => ol.proj.fromLonLat(lonLat);
-
   const iconSvg = (fill, label) => {
-    const safeLabel = label.slice(0, 1);
+    const safeLabel = String(label || '').slice(0, 3);
+    const fontSize = safeLabel.length > 2 ? 11 : 14;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="52" viewBox="0 0 42 52">
       <filter id="shadow" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#172033" flood-opacity="0.24"/></filter>
       <path filter="url(#shadow)" d="M21 2C10.5 2 2 10.2 2 20.4 2 34.1 21 50 21 50s19-15.9 19-29.6C40 10.2 31.5 2 21 2z" fill="${fill}"/>
       <circle cx="21" cy="20" r="12" fill="#fff" fill-opacity="0.95"/>
-      <text x="21" y="25" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="700" fill="${fill}">${safeLabel}</text>
+      <text x="21" y="25" text-anchor="middle" font-size="${fontSize}" font-family="Arial, sans-serif" font-weight="700" fill="${fill}">${safeLabel}</text>
     </svg>`;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  };
+
+  const routeOrderLabel = place => {
+    const day = GUIDE_DATA.days.find(item => item.id === place.day);
+    if (!day) return '';
+    const index = day.route.indexOf(place.id);
+    return index >= 0 ? `${place.day}-${index + 1}` : '';
   };
 
   const styleCache = {};
@@ -63,13 +70,14 @@ const GuideMap = (() => {
     const place = feature.get('place');
     const meta = categoryMeta[place.category] || categoryMeta.sight;
     const selected = selectedPlace && selectedPlace.id === place.id;
-    const key = `${place.category}-${selected ? 'selected' : 'normal'}`;
+    const order = routeOrderLabel(place);
+    const key = `${place.id}-${selected ? 'selected' : 'normal'}-${order}`;
     if (!styleCache[key]) {
       styleCache[key] = new ol.style.Style({
         image: new ol.style.Icon({
-          src: iconSvg(meta.color, meta.label),
+          src: iconSvg(meta.color, order || meta.label),
           anchor: [0.5, 1],
-          scale: selected ? 1.15 : 0.92
+          scale: selected ? 1.18 : 0.94
         }),
         text: new ol.style.Text({
           text: place.name,
