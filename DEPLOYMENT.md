@@ -9,6 +9,8 @@
 - Nginx 配置文件：`/etc/nginx/sites-enabled/dragon-boat-guide.conf`
 - 入口文件：`index.html`
 - 静态资源目录：`css/`、`js/`、`images/`
+- SSH开源工具-Tabby Terminal：https://github.com/Eugeny/tabby
+- 文件传输工具-WinSCP（windows）：https://winscp.net/eng/download.php
 
 ## 服务器前置条件
 
