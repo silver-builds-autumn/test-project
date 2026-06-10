@@ -1,0 +1,71 @@
+{
+  "repoLayoutVersion": 1,
+  "rootPolicy": {
+    "legacyStaticFilesRemainAtRoot": true,
+    "newFrontendLivesIn": "frontend",
+    "newBackendLivesIn": "backend",
+    "architectureArtifactsLiveIn": "docs/architecture"
+  },
+  "directories": [
+    {
+      "path": "frontend/src/pages",
+      "responsibility": "页面级组合与路由落点",
+      "plannedArtifacts": ["ItineraryMapPage.vue", "MindMapPage.vue"]
+    },
+    {
+      "path": "frontend/src/components",
+      "responsibility": "展示组件与交互组件",
+      "plannedArtifacts": ["详情面板", "拖拽列表", "预算/清单卡片"]
+    },
+    {
+      "path": "frontend/src/stores",
+      "responsibility": "Pinia 单一状态源",
+      "plannedArtifacts": ["itineraryStore", "spotStore", "routeStore", "transportStore", "uiStore"]
+    },
+    {
+      "path": "frontend/src/services",
+      "responsibility": "API 客户端、导航能力、资源访问封装",
+      "plannedArtifacts": ["httpClient", "navigationService", "resourceService"]
+    },
+    {
+      "path": "frontend/src/map",
+      "responsibility": "OpenLayers 地图抽象层",
+      "plannedArtifacts": ["MapCanvas", "SpotLayer", "RouteLayer", "ManualPointLayer"]
+    },
+    {
+      "path": "backend/app/api",
+      "responsibility": "REST 路由层",
+      "plannedArtifacts": ["spots", "routes", "transport-configs", "resources"]
+    },
+    {
+      "path": "backend/app/models",
+      "responsibility": "SQLAlchemy 持久化模型",
+      "plannedArtifacts": ["Itinerary", "DayPlan", "SpotNode", "RouteSegment", "TransportConfig", "ManualLocation", "RouteCache"]
+    },
+    {
+      "path": "backend/app/schemas",
+      "responsibility": "请求/响应 DTO",
+      "plannedArtifacts": ["spot DTO", "route DTO", "transport DTO"]
+    },
+    {
+      "path": "backend/app/services",
+      "responsibility": "路线计算、POI 解析、资源聚合等业务服务",
+      "plannedArtifacts": ["geo resolver", "route optimizer", "resource proxy"]
+    },
+    {
+      "path": "backend/app/db",
+      "responsibility": "数据库会话、迁移入口、种子数据",
+      "plannedArtifacts": ["engine", "session", "seed loader"]
+    },
+    {
+      "path": "backend/app/core",
+      "responsibility": "配置、错误码、公共约束",
+      "plannedArtifacts": ["settings", "error contract"]
+    }
+  ],
+  "enforcement": [
+    "根目录旧静态文件只做基线参考，不再继续堆新业务逻辑。",
+    "所有新增业务能力优先进入 frontend 或 backend，不落回 js/*.js。",
+    "docs/architecture 只保存架构映射、边界与状态流，不保存业务素材。"
+  ]
+}

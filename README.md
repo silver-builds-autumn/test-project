@@ -90,6 +90,76 @@ http://localhost:8080
 
 也可以直接打开 `index.html`，但手机定位、导航唤起和部分浏览器安全能力可能受限。
 
+## 全栈本地联调
+
+当前仓库已经支持“前端真实请求后端 + 后端真实 SQLite 数据库”的本地联调。
+
+### 目录分工
+
+- `frontend/`：Vue3 + Vite + OpenLayers 前端
+- `backend/`：FastAPI + SQLAlchemy Async 后端
+- `backend/data/dragon_boat_guide.db`：本地开发数据库文件
+- `scripts/start_backend.ps1`：启动后端
+- `scripts/start_frontend.ps1`：启动前端
+- `scripts/start_fullstack.ps1`：一键拉起前后端
+
+### 首次准备
+
+后端依赖：
+
+```bash
+cd backend
+python -m pip install -e .
+```
+
+前端依赖：
+
+```bash
+cd frontend
+npm install
+```
+
+### 分开启动
+
+启动后端：
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/start_backend.ps1
+```
+
+启动前端：
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/start_frontend.ps1
+```
+
+### 一键启动
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/start_fullstack.ps1
+```
+
+如果只想先看会执行什么命令：
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/start_fullstack.ps1 -DryRun
+```
+
+### 默认地址
+
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:8000`
+- 健康检查：`http://localhost:8000/health`
+- 点位列表：`http://localhost:8000/spots?itineraryId=1`
+- 路线列表：`http://localhost:8000/routes?itineraryId=1`
+
+### 当前联调行为
+
+- 后端启动时会自动建表并初始化种子数据
+- 前端地图页默认优先请求后端 `/spots` 和 `/routes`
+- 如果后端不可达或返回异常，前端会自动回退到本地静态基线数据
+
+
 ## 部署方式
 
 可直接部署到：

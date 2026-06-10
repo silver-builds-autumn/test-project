@@ -1,0 +1,154 @@
+{
+  "fallbackPolicies": [
+    {
+      "scenario": "地址解析失败",
+      "backendSignal": {
+        "endpoint": "/geo/resolve",
+        "strategy": "candidate-only",
+        "fallback_action": "allow-manual-location-or-text-node",
+        "retriable": true
+      },
+      "frontendHandling": [
+        "保留用户输入地址文本",
+        "允许创建文本节点",
+        "允许切换到人工地图选点"
+      ]
+    },
+    {
+      "scenario": "路线规划超时或结果未就绪",
+      "backendSignal": {
+        "endpoint": "/routes/optimize",
+        "status": "pending",
+        "fallback_action": "keep-current-order",
+        "retriable": true
+      },
+      "frontendHandling": [
+        "先显示当前顺序",
+        "展示待计算状态",
+        "允许用户后续重试"
+      ]
+    },
+    {
+      "scenario": "排序后路线重算失败",
+      "backendSignal": {
+        "endpoint": "/routes/recalculate",
+        "status": "pending",
+        "fallback_action": "keep-user-order",
+        "retriable": true
+      },
+      "frontendHandling": [
+        "保留用户拖拽结果",
+        "不回滚列表顺序",
+        "提示路线待重算"
+      ]
+    },
+    {
+      "scenario": "实景图缺失",
+      "backendSignal": {
+        "endpoint": "/resources/real-scenes",
+        "fallback_action": "hide-real-scene-section"
+      },
+      "frontendHandling": [
+        "隐藏实景图区域",
+        "保留基础详情与导航"
+      ]
+    },
+    {
+      "scenario": "网络异常或超时",
+      "frontendSignal": {
+        "service": "frontend/src/services/httpClient.ts",
+        "codes": [
+          "NETWORK_ERROR",
+          "TIMEOUT",
+          "HTTP_ERROR"
+        ]
+      },
+      "frontendHandling": [
+        "保留本地状态",
+        "展示降级内容",
+        "允许后续重试"
+      ]
+    }
+  ],
+  "acceptanceChecklist": [
+    {
+      "id": "qa-001",
+      "title": "创建节点闭环",
+      "steps": [
+        "输入景点名称和所属天数",
+        "提交节点",
+        "检查列表与地图是否同步出现"
+      ],
+      "expected": "节点创建成功，前后端数据结构一致"
+    },
+    {
+      "id": "qa-002",
+      "title": "地址解析降级",
+      "steps": [
+        "提交无法解析的地址",
+        "调用 /geo/resolve",
+        "检查是否返回候选或允许人工点位"
+      ],
+      "expected": "不阻断创建流程，允许文本节点或人工点位继续"
+    },
+    {
+      "id": "qa-003",
+      "title": "路线优化降级",
+      "steps": [
+        "触发 /routes/optimize",
+        "观察 pending 状态与 fallback_action",
+        "验证前端保留当前顺序"
+      ],
+      "expected": "用户仍能继续查看地图与详情，不会因路线失败卡死"
+    },
+    {
+      "id": "qa-004",
+      "title": "拖拽后重算",
+      "steps": [
+        "调整可见点位顺序",
+        "触发 /routes/recalculate",
+        "观察用户顺序是否保留"
+      ],
+      "expected": "即使重算未完成，也不回滚用户排序"
+    },
+    {
+      "id": "qa-005",
+      "title": "地图与列表联动",
+      "steps": [
+        "点击地图点位",
+        "检查右侧/底部详情面板",
+        "点击列表项，检查地图选中态"
+      ],
+      "expected": "地图、列表、详情保持同一选中状态"
+    },
+    {
+      "id": "qa-006",
+      "title": "H5 底部面板状态机",
+      "steps": [
+        "在移动端切换摘要、半屏、全屏",
+        "滚动列表与地图区域",
+        "观察面板高度和滚动行为"
+      ],
+      "expected": "地图拖拽与面板滚动不互相抢占"
+    },
+    {
+      "id": "qa-007",
+      "title": "无图降级",
+      "steps": [
+        "调用 /resources/real-scenes 返回空列表",
+        "检查详情页展示"
+      ],
+      "expected": "前端隐藏实景图模块，不影响详情与导航"
+    },
+    {
+      "id": "qa-008",
+      "title": "前端请求超时",
+      "steps": [
+        "模拟接口超时",
+        "观察 httpClient 抛出的标准错误",
+        "检查页面是否保留当前状态"
+      ],
+      "expected": "出现 TIMEOUT 错误对象，页面保持可操作"
+    }
+  ]
+}

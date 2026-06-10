@@ -1,0 +1,106 @@
+{
+  "baselineVersion": 1,
+  "project": {
+    "name": "dragon-boat-guide",
+    "currentMode": "static-web-h5",
+    "targetMode": "fullstack-travel-app"
+  },
+  "currentEntryPoints": {
+    "page": "index.html",
+    "styles": ["css/style.css"],
+    "data": ["js/data.js"],
+    "behavior": ["js/app.js"],
+    "map": ["js/map.js"]
+  },
+  "pageSections": [
+    {
+      "id": "route-map",
+      "currentRole": "地图主视区 + 筛选 + 地点列表",
+      "futureModules": [
+        "frontend/src/pages/ItineraryMapPage.vue",
+        "frontend/src/map/MapCanvas.ts",
+        "frontend/src/components/spot/SpotListPanel.vue"
+      ]
+    },
+    {
+      "id": "itinerary",
+      "currentRole": "按天时间线与执行动线",
+      "futureModules": [
+        "frontend/src/components/day/DayTimeline.vue"
+      ]
+    },
+    {
+      "id": "food-stay",
+      "currentRole": "餐饮与住宿信息卡片",
+      "futureModules": [
+        "frontend/src/components/info/FoodCardList.vue",
+        "frontend/src/components/info/StayCardList.vue"
+      ]
+    },
+    {
+      "id": "transit",
+      "currentRole": "交通关键词与搜索口径",
+      "futureModules": [
+        "frontend/src/components/transit/TransitKeywordGrid.vue"
+      ]
+    },
+    {
+      "id": "budget",
+      "currentRole": "预算与备选策略",
+      "futureModules": [
+        "frontend/src/components/budget/BudgetGrid.vue",
+        "frontend/src/components/budget/BackupStrategyBox.vue"
+      ]
+    },
+    {
+      "id": "checklist",
+      "currentRole": "出发前确认清单",
+      "futureModules": [
+        "frontend/src/components/checklist/ChecklistGrid.vue"
+      ]
+    }
+  ],
+  "dataDomains": [
+    {
+      "source": "GUIDE_DATA.meta",
+      "target": "Itinerary",
+      "notes": ["标题", "日期范围", "地图中心", "视图模式"]
+    },
+    {
+      "source": "GUIDE_DATA.days",
+      "target": "DayPlan[]",
+      "notes": ["天级摘要", "日期", "路线顺序", "时间线"]
+    },
+    {
+      "source": "GUIDE_DATA.places",
+      "target": "SpotNode[]",
+      "notes": ["名称", "地址/搜索词", "坐标", "标签", "详情"]
+    },
+    {
+      "source": "days.route + map route rendering",
+      "target": "RouteSegment[] + RouteCache",
+      "notes": ["顺序和路线结果拆开存储", "避免重算覆盖手动排序"]
+    },
+    {
+      "source": "navigation sheet + currentPosition",
+      "target": "uiStore + navigation service",
+      "notes": ["导航能力仍留在前端", "定位授权状态单独管理"]
+    }
+  ],
+  "interactionOwnership": [
+    {
+      "current": "js/app.js",
+      "owns": ["列表渲染", "时间线渲染", "预算清单渲染", "导航弹层"]
+    },
+    {
+      "current": "js/map.js",
+      "owns": ["底图切换", "点位样式", "路线绘制", "筛选刷新", "地图弹窗"]
+    }
+  ],
+  "migrationRules": [
+    "先复制业务能力，不先美化 UI。",
+    "地图、列表、详情、导航必须改成单一状态源驱动。",
+    "现有静态页在迁移完成前保留为业务验收基线。",
+    "路线排序状态与路线计算结果不能写进同一个实体字段。"
+  ]
+}
